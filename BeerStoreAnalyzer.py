@@ -77,6 +77,13 @@ def analyze_beer(url):
         alcohol_vol = total_vol * (abv_val / 100)
         price_per_alc = price / alcohol_vol
 
+        if single_vol == 50000 or single_vol == 58600:
+            price -= 50
+        if single_vol == 30000:
+            price -= 50
+        if single_vol == 20000 or single_vol == 25000:
+            price -= 20
+
         container_type = str(quantity) + " x " + str(single_vol) + " ml"
 
         containers.append([name, code, container_type, price, quantity, single_vol, total_vol, price_per_vol, alcohol_vol, price_per_alc])
