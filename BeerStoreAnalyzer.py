@@ -30,7 +30,7 @@ def get_beer_list():
 
 def print_stats_to_html(data):
     data = sorted(data, key=itemgetter(9))
-    with open('data.html', "w") as f:
+    with open('beer_data.html', "w") as f:
         f.write("<body>\n<table>\n")
         f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
         for d in data:
