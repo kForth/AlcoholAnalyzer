@@ -1,5 +1,7 @@
 from operator import itemgetter
 import datetime
+import BeerStoreAnalyzer
+import LcboAnalyzer
 
 def get_beer_store():
     return BeerStoreAnalyzer.get_beer_list()
@@ -32,3 +34,5 @@ def get_beer_list():
 
 def get_lcbo_list():
     print_stats_to_html(get_lcbo(), 'lcbo_data.html')
+
+get_both_list()
