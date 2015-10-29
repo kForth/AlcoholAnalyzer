@@ -66,7 +66,7 @@ def print_stats_to_html(data):
     data = sorted(data, key=itemgetter(10))
     with open('lcbo_data.html', "w") as f:
         date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        f.write("<body>\n<b>" + date + "</b>\n<table>\n")
+        f.write("<head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>\n<body>\n<b>" + date + "</b>\n<table class='sortable'>\n")
         f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Source</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
         for d in data:
             f.write("<tr>")
