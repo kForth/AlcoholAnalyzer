@@ -1,6 +1,7 @@
 import requests
 from lxml import html
 from operator import itemgetter
+import datetime
 
 url = "http://www.thebeerstore.ca"
 search_url = "/beers/search/beer_type--"
@@ -29,10 +30,11 @@ def get_beer_list():
     # print beer_list.sort()
 
 def print_stats_to_html(data):
-    data = sorted(data, key=itemgetter(9))
+    data = sorted(data, key=itemgetter(10))
     with open('beer_data.html', "w") as f:
-        f.write("<body>\n<table>\n")
-        f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
+        date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        f.write("<body>\n<b>" + date + "</b>\n<table>\n")
+        f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Source</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
         for d in data:
             f.write("<tr>")
             for e in d:
@@ -86,7 +88,7 @@ def analyze_beer(url):
 
         container_type = str(quantity) + " x " + str(single_vol) + " ml"
 
-        containers.append([name, code, container_type, price, quantity, single_vol, total_vol, price_per_vol, alcohol_vol, price_per_alc])
+        containers.append([name, code, "The Beer Store", container_type, round(price, 2), quantity, round(single_vol,2), round(total_vol,2), round(price_per_vol,4), round(alcohol_vol,2), round(price_per_alc,4)])
 
     return containers
 
