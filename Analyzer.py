@@ -19,7 +19,12 @@ def print_stats_to_html(data, filename):
             f.write("<tr>")
             for e in d:
                 if e == d[1]:
-                    f.write("<td><a href='" + url + "/beers/" + d[1] + "'>" + str(e) + "</a></td>")
+                    if d[2] == "LCBO":
+                        f.write("<td><a href='http://lcbo.ca/lcbo/product/" + d[1] + "'>" + str(e) + "</a></td>")
+                    elif d[2] == "The Beer Store":
+                        f.write("<td><a href='http://thebeerstore.ca/beers/" + d[1] + "'>" + str(e) + "</a></td>")
+                    else:
+                        f.write("<td>" + str(e) + "</td>")
                 else:
                     f.write("<td>" + str(e) + "</td>")
             f.write("</tr>\n")
