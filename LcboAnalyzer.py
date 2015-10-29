@@ -1,7 +1,5 @@
 import requests
 from lxml import html
-from operator import itemgetter
-import datetime
 
 url = "http://www.lcbo.ca/"
 page_urls = ["http://www.lcbo.ca/lcbo/catalog/ale/11022",
@@ -58,28 +56,7 @@ def get_drink_list():
             continue
         drink_list.append(data)
 
-    print_stats_to_html(drink_list)
-
-    # print beer_list.sort()
-
-def print_stats_to_html(data):
-    data = sorted(data, key=itemgetter(10))
-    with open('lcbo_data.html', "w") as f:
-        date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        f.write("<head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>\n<body>\n<b>" + date + "</b>\n<table class='sortable'>\n")
-        f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Source</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
-        for d in data:
-            f.write("<tr>")
-            for e in d:
-                if e == d[1]:
-                    f.write("<td><a href='" + url + "/lcbo/product/" + d[1] + "'>" + str(e) + "</a></td>")
-                else:
-                    try:
-                        f.write("<td>" + str(e) + "</td>")
-                    except:
-                        f.write("<td>Name Error</td>")
-            f.write("</tr>\n")
-        f.write("</table>\n</body>")
+    return drink_list
 
 def analyze_drink(url):
     print url
@@ -126,7 +103,3 @@ def analyze_drink(url):
 
 
     return [name, code, "LCBO", container, round(price,2), quantity, round(single_vol,2), round(total_vol,2), round(price_per_vol,4), round(alcohol_vol,2), round(price_per_alc,4)]
-
-
-get_drink_list()
-# print analyze_drink("http://www.lcbo.ca//lcbo/product/vodka-mudshake-chocolate-candy-cane/286971")

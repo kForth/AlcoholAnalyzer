@@ -1,7 +1,5 @@
 import requests
 from lxml import html
-from operator import itemgetter
-import datetime
 
 url = "http://www.thebeerstore.ca"
 search_url = "/beers/search/beer_type--"
@@ -25,25 +23,7 @@ def get_beer_list():
         data = analyze_beer(url + beer)
         beer_list += data
 
-    print_stats_to_html(beer_list)
-
-    # print beer_list.sort()
-
-def print_stats_to_html(data):
-    data = sorted(data, key=itemgetter(10))
-    with open('beer_data.html', "w") as f:
-        date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        f.write("<head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>\n<body>\n<b>" + date + "</b>\n<table class='sortable'>\n")
-        f.write("<tr style='font-weight:bold'><td>Name</td><td>Code</td><td>Source</td><td>Type</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Price Per Vol</td><td>Alc Vol</td><td>Price Per Alc</td></tr>")
-        for d in data:
-            f.write("<tr>")
-            for e in d:
-                if e == d[1]:
-                    f.write("<td><a href='" + url + "/beers/" + d[1] + "'>" + str(e) + "</a></td>")
-                else:
-                    f.write("<td>" + str(e) + "</td>")
-            f.write("</tr>\n")
-        f.write("</table>\n</body></html>")
+    return beer_list
 
 def analyze_beer(url):
     page = requests.get(url)
@@ -91,7 +71,3 @@ def analyze_beer(url):
         containers.append([name, code, "The Beer Store", container_type, round(price, 2), quantity, round(single_vol,2), round(total_vol,2), round(price_per_vol,4), round(alcohol_vol,2), round(price_per_alc,4)])
 
     return containers
-
-
-get_beer_list()
-# print analyze_beer("http://www.thebeerstore.ca/beers/alpine-lager")
