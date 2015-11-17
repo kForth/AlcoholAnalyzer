@@ -1,7 +1,7 @@
 import requests
 from lxml import html
 
-url = "http://www.lcbo.ca/"
+the_url = "http://www.lcbo.ca/"
 page_urls = ["http://www.lcbo.ca/lcbo/catalog/ale/11022",
              "http://www.lcbo.ca/lcbo/catalog/lager/11027",
              "http://www.lcbo.ca/lcbo/catalog/hybrid/11007",
@@ -36,22 +36,37 @@ page_urls = ["http://www.lcbo.ca/lcbo/catalog/ale/11022",
 def get_drink_list():
     print "Gathering Drinks."
     drinks = []
-    for page in page_urls:
+    for page_url in page_urls:
         headers = {
             'User-Agent': 'Mozilla/5.0',
         }
-        page = requests.get(page, headers=headers)
+        page = requests.get(page_url, headers=headers)
         page = html.fromstring(page.text)
 
-        l = page.xpath('//div[@class="product-name"]/a/@href')
-        drinks += l
+        try:
+            num_pages = int(page.xpath('//span[@class="pagination-top"]/span[@class="pages"]/ul/li[@class="hoverover"]/a/text()')[-1])
+            urls = []
+            for i in range(num_pages+1):
+                print page_url + "#contentBeginIndex=0&productBeginIndex=" + str(i*12) + "&beginIndex=" + str(i*12) + "&pageView=&resultType=products&orderByContent=&searchTerm=&facet=&storeId=10151&catalogId=10001&langId=-1&fromPage=&objectId=&requesttype=ajax"
+                urls += [page_url + "#contentBeginIndex=0&productBeginIndex=" + str(i*12) + "&beginIndex=" + str(i*12) + "&pageView=&resultType=products&orderByContent=&searchTerm=&facet=&storeId=10151&catalogId=10001&langId=-1&fromPage=&objectId=&requesttype=ajax"]
+        except:
+            urls = [page_url]
+
+        for url in urls:
+            headers = {
+                'User-Agent': 'Mozilla/5.0',
+            }
+            page = requests.get(url, headers=headers)
+            page = html.fromstring(page.text)
+            l = page.xpath('//div[@class="product-name"]/a/@href')
+            drinks += l
 
     print "\nAnalyzing " + str(len(drinks)) + " Drinks\n"
 
     drink_list = []
     for drink in drinks:
         print drink.split("/")[-2]
-        data = analyze_drink(url + drink)
+        data = analyze_drink(the_url + drink)
         if data == None:
             continue
         drink_list.append(data)
@@ -59,7 +74,6 @@ def get_drink_list():
     return drink_list
 
 def analyze_drink(url):
-    print url
     headers = {
         'User-Agent': 'Mozilla/5.0',
     }
@@ -67,6 +81,7 @@ def analyze_drink(url):
     page = requests.get(url, headers=headers)
 
     if page.status_code == 403:
+        print "."
         return analyze_drink(url)
 
     if "We're sorry, the page you requested does not exist." in page.text:
@@ -75,8 +90,9 @@ def analyze_drink(url):
     page = html.fromstring(page.text)
 
     name = page.xpath('//li[@id="categoryPath"]/text()')[0].strip().encode('ascii', 'ignore')
-    container = page.xpath('//dt[@class="product-volume"]/text()')[0]
+    container = ''.join(page.xpath('//dt[@class="product-volume"]/text()'))
     details = page.xpath('//div[@class="panel-body"]/dl/dd/text()')
+    print details
     abv = details[["%" in i for i in details].index(True)]
     abv_val = float(abv.split("%")[0])
 
@@ -103,3 +119,6 @@ def analyze_drink(url):
 
 
     return [name, code, "LCBO", container, round(price,2), quantity, round(single_vol,2), round(total_vol,2), round(price_per_vol,4), round(alcohol_vol,2), round(price_per_alc,4)]
+
+
+# print get_drink_list()

@@ -41,3 +41,4 @@ def get_lcbo_list():
     print_stats_to_html(get_lcbo(), 'lcbo_data.html')
 
 get_both_list()
+# get_lcbo_list()
