@@ -20,6 +20,15 @@ class Analyzer:
     def __init__(self):
         pass
 
+    def run(self, get_lcbo=True, get_beer_store=True):
+        items = []
+        if get_lcbo:
+            items += self._get_lcbo_items()
+        if get_beer_store:
+            items += self._get_beer_store_items()
+
+        return items
+
     def _get_lcbo_urls(self, from_file=False, save_links=True):
         if from_file:
             return json.load(open("links.json"))
@@ -33,7 +42,7 @@ class Analyzer:
                 json.dump(products, open("links.json", "w+"))
             return products
 
-    def get_lcbo_items(self):
+    def _get_lcbo_items(self):
         items = []
         products = self._get_lcbo_urls(from_file=True)
         for product in products[:3]:
@@ -41,7 +50,7 @@ class Analyzer:
             items.append(Drink.from_lcbo_page(page.text, product['loc']))
         return items
 
-    def get_beer_store_items(self):
+    def _get_beer_store_items(self):
         beers = []
         for beer in self.BEER_STORE_CATEGORIES:
             print("Gathering all " + beer + "s")
