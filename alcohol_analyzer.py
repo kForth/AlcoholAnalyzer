@@ -101,6 +101,10 @@ class Analyzer:
     LCBO_URL = "http://www.lcbo.com"
     LCBO_XML_URLS = ["/product_en.1.xml", "/product_en.2.xml"]
 
+    BEER_STORE_URL = "http://www.thebeerstore.ca"
+    BEER_STORE_SEARCH = "/beers/search/beer_type--"
+    BEER_STORE_CATS = ["Ale", "Lager", "Malt", "Stout"]
+
     def __init__(self):
         pass
 
@@ -124,6 +128,26 @@ class Analyzer:
         for product in products[:3]:
             page = requests.get(product['loc'], headers=self.HEADERS)
             items.append(Drink.from_lcbo_page(page.text))
+
+        return items
+
+    def get_beer_store_items(self):
+        beers = []
+        for beer in self.BEER_STORE_CATS:
+            print("Gathering all " + beer + "s")
+            page = requests.get(self.BEER_STORE_URL + self.BEER_STORE_SEARCH + beer)
+            page = html.fromstring(page.text)
+
+            l = page.xpath('//a[@class="brand-link teaser"]/@href')
+            beers += l
+
+        print("\nAnalyzing " + str(len(beers)) + " Beers\n")
+
+        items = []
+        for beer in beers:
+            print(beer.split("/")[-1])
+            page = requests.get(self.BEER_STORE_URL + beer)
+            items += Drink.from_beer_store_page(page)
 
         return items
 
