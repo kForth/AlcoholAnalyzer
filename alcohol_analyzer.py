@@ -36,11 +36,9 @@ class Analyzer:
     def get_lcbo_items(self):
         items = []
         products = self._get_lcbo_urls(from_file=True)
-
         for product in products[:3]:
             page = requests.get(product['loc'], headers=self.REQUEST_HEADERS)
-            items.append(Drink.from_lcbo_page(page.text))
-
+            items.append(Drink.from_lcbo_page(page.text, product['loc']))
         return items
 
     def get_beer_store_items(self):
@@ -52,26 +50,25 @@ class Analyzer:
 
             l = page.xpath('//a[@class="brand-link teaser"]/@href')
             beers += l
-
         print("\nAnalyzing " + str(len(beers)) + " Beers\n")
-
         items = []
         for beer in beers:
             print(beer.split("/")[-1])
             page = requests.get(self.BEER_STORE_URL + beer)
-            items += Drink.from_beer_store_page(page)
+            items += Drink.from_beer_store_page(page, self.BEER_STORE_URL + beer)
 
         return items
 
 
 class Drink:
-    def __init__(self, name, abv, price, source, quantity, single_vol):
+    def __init__(self, name, abv, price, source, quantity, single_vol, url):
         self.name = name
         self.abv = abv
         self.price = price
         self.source = source
         self.quantity = quantity
         self.single_vol = single_vol
+        self.url = url
         self._update()
 
     def _update(self):
@@ -81,7 +78,7 @@ class Drink:
         self.price_per_alc = self.price / self.alcohol_vol
 
     @staticmethod
-    def from_lcbo_page(text):
+    def from_lcbo_page(text, url):
         page = html.fromstring(text)
         name = page.xpath('//li[@id="categoryPath"]/text()')[0].strip().encode('ascii', 'ignore')
         container = ''.join(page.xpath('//dt[@class="product-volume"]/text()'))
@@ -98,10 +95,10 @@ class Drink:
         else:
             single_vol = int(container.split(" ")[0])
 
-        return Drink(name, abv, price, "LCBO", quantity, single_vol)
+        return Drink(name, abv, price, "LCBO", quantity, single_vol, url)
 
     @staticmethod
-    def from_beer_store_page(text):
+    def from_beer_store_page(text, url):
         page = html.fromstring(text)
 
         name = page.xpath('//div[@class="only-desktop"]/h1[@class="page-title"]/text()')[0]
@@ -135,7 +132,7 @@ class Drink:
             if single_vol in [20000, 25000]:
                 price -= 20
 
-            containers.append(Drink(name, abv, price, "The Beer Store", quantity, single_vol))
+            containers.append(Drink(name, abv, price, "The Beer Store", quantity, single_vol, url))
         return containers
 
 
