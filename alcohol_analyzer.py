@@ -5,6 +5,65 @@ import xmltodict
 from lxml import html
 
 
+class Analyzer:
+    REQUEST_HEADERS = {
+        'User-Agent': 'Mozilla/5.0',
+    }
+
+    LCBO_URL = "http://www.lcbo.com"
+    LCBO_XML_URLS = ["/product_en.1.xml", "/product_en.2.xml"]
+
+    BEER_STORE_URL = "http://www.thebeerstore.ca"
+    BEER_STORE_SEARCH_SUFFIX = "/beers/search/beer_type--"
+    BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
+
+    def __init__(self):
+        pass
+
+    def _get_lcbo_urls(self, from_file=False, save_links=True):
+        if from_file:
+            return json.load(open("links.json"))
+        else:
+            products = []
+            for xml_url in self.LCBO_XML_URLS:
+                xml = requests.get(self.LCBO_URL + xml_url, headers=self.REQUEST_HEADERS)
+                results = xmltodict.parse(xml.text)
+                products += map(dict, results['urlset']['url'])
+            if save_links:
+                json.dump(products, open("links.json", "w+"))
+            return products
+
+    def get_lcbo_items(self):
+        items = []
+        products = self._get_lcbo_urls(from_file=True)
+
+        for product in products[:3]:
+            page = requests.get(product['loc'], headers=self.REQUEST_HEADERS)
+            items.append(Drink.from_lcbo_page(page.text))
+
+        return items
+
+    def get_beer_store_items(self):
+        beers = []
+        for beer in self.BEER_STORE_CATEGORIES:
+            print("Gathering all " + beer + "s")
+            page = requests.get(self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer)
+            page = html.fromstring(page.text)
+
+            l = page.xpath('//a[@class="brand-link teaser"]/@href')
+            beers += l
+
+        print("\nAnalyzing " + str(len(beers)) + " Beers\n")
+
+        items = []
+        for beer in beers:
+            print(beer.split("/")[-1])
+            page = requests.get(self.BEER_STORE_URL + beer)
+            items += Drink.from_beer_store_page(page)
+
+        return items
+
+
 class Drink:
     def __init__(self, name, abv, price, source, quantity, single_vol):
         self.name = name
@@ -20,20 +79,6 @@ class Drink:
         self.price_per_vol = self.price / self.total_vol
         self.alcohol_vol = self.total_vol * (self.abv / 100)
         self.price_per_alc = self.price / self.alcohol_vol
-
-    def to_json(self):
-        return {
-            "name":          self.name,
-            "abv":           self.abv,
-            "price":         self.price,
-            "source":        self.source,
-            "quantity":      self.quantity,
-            "single_vol":    self.single_vol,
-            "total_vol":     self.total_vol,
-            "price_per_vol": self.price_per_vol,
-            "alcohol_vol":   self.alcohol_vol,
-            "price_per_alc": self.price_per_alc
-        }
 
     @staticmethod
     def from_lcbo_page(text):
@@ -92,64 +137,6 @@ class Drink:
 
             containers.append(Drink(name, abv, price, "The Beer Store", quantity, single_vol))
         return containers
-
-
-class Analyzer:
-    HEADERS = {
-        'User-Agent': 'Mozilla/5.0',
-    }
-    LCBO_URL = "http://www.lcbo.com"
-    LCBO_XML_URLS = ["/product_en.1.xml", "/product_en.2.xml"]
-
-    BEER_STORE_URL = "http://www.thebeerstore.ca"
-    BEER_STORE_SEARCH = "/beers/search/beer_type--"
-    BEER_STORE_CATS = ["Ale", "Lager", "Malt", "Stout"]
-
-    def __init__(self):
-        pass
-
-    def get_lcbo_urls(self, from_file=False, save_links=True):
-        if from_file:
-            return json.load(open("links.json"))
-        else:
-            products = []
-            for xml_url in self.LCBO_XML_URLS:
-                xml = requests.get(self.LCBO_URL + xml_url, headers=self.HEADERS)
-                results = xmltodict.parse(xml.text)
-                products += map(dict, results['urlset']['url'])
-            if save_links:
-                json.dump(products, open("links.json", "w+"))
-            return products
-
-    def get_lcbo_items(self):
-        items = []
-        products = self.get_lcbo_urls(from_file=True)
-
-        for product in products[:3]:
-            page = requests.get(product['loc'], headers=self.HEADERS)
-            items.append(Drink.from_lcbo_page(page.text))
-
-        return items
-
-    def get_beer_store_items(self):
-        beers = []
-        for beer in self.BEER_STORE_CATS:
-            print("Gathering all " + beer + "s")
-            page = requests.get(self.BEER_STORE_URL + self.BEER_STORE_SEARCH + beer)
-            page = html.fromstring(page.text)
-
-            l = page.xpath('//a[@class="brand-link teaser"]/@href')
-            beers += l
-
-        print("\nAnalyzing " + str(len(beers)) + " Beers\n")
-
-        items = []
-        for beer in beers:
-            print(beer.split("/")[-1])
-            page = requests.get(self.BEER_STORE_URL + beer)
-            items += Drink.from_beer_store_page(page)
-
-        return items
 
 
 if __name__ == "__main__":
