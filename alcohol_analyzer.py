@@ -55,6 +55,44 @@ class Drink:
 
         return Drink(name, abv, price, "LCBO", quantity, single_vol)
 
+    @staticmethod
+    def from_beer_store_page(text):
+        page = html.fromstring(text)
+
+        name = page.xpath('//div[@class="only-desktop"]/h1[@class="page-title"]/text()')[0]
+        abv = float(page.xpath('//div[@class="brand-info-inner"]/dl/dd/text()')[-1].split("%")[0])
+
+        options = page.xpath('//tbody/tr/td/text()')
+        sale_prices = page.xpath('//tbody/tr/td/strike/text()')
+
+        if len(sale_prices) > 0:
+            to_insert = []
+            for i in range(len(options)):
+                if len(options) == 1 or ("ml" in options[i] and (i == len(options) - 1 or not "$" in options[i + 1])):
+                    to_insert.append([i + 1, sale_prices.pop(0)])
+
+            i = 0
+            for e in to_insert:
+                options.insert(e[0] + i, e[1])
+                i += 1
+
+        containers = []
+        for i in range(0, len(options), 2):
+            container_type = options[i]
+            price = float(options[i + 1].split("$")[1])
+            quantity = int(container_type.split("  ")[0])
+            single_vol = int(container_type.split(" ")[-1][0:-3])
+
+            if single_vol in [50000, 58600]:
+                price -= 50
+            if single_vol in [30000]:
+                price -= 50
+            if single_vol in [20000, 25000]:
+                price -= 20
+
+            containers.append(Drink(name, abv, price, "The Beer Store", quantity, single_vol))
+        return containers
+
 
 class Analyzer:
     HEADERS = {
