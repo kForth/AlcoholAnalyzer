@@ -5,25 +5,27 @@ url = "http://www.thebeerstore.ca"
 search_url = "/beers/search/beer_type--"
 beer_types = ["Ale", "Lager", "Malt", "Stout"]
 
+
 def get_beer_list():
     beers = []
     for beer in beer_types:
-        print "Gathering all " + beer + "s"
+        print("Gathering all " + beer + "s")
         page = requests.get(url + search_url + beer)
         page = html.fromstring(page.text)
 
         l = page.xpath('//a[@class="brand-link teaser"]/@href')
         beers += l
 
-    print "\nAnalyzing " + str(len(beers)) + " Beers\n"
+    print("\nAnalyzing " + str(len(beers)) + " Beers\n")
 
     beer_list = []
     for beer in beers:
-        print beer.split("/")[-1]
+        print(beer.split("/")[-1])
         data = analyze_beer(url + beer)
         beer_list += data
 
     return beer_list
+
 
 def analyze_beer(url):
     page = requests.get(url)
@@ -39,8 +41,8 @@ def analyze_beer(url):
     if len(sale_prices) > 0:
         to_insert = []
         for i in range(len(options)):
-            if len(options) == 1 or ("ml" in options[i] and (i == len(options)-1 or not "$" in options[i+1])):
-                to_insert.append([i+1, sale_prices.pop(0)])
+            if len(options) == 1 or ("ml" in options[i] and (i == len(options) - 1 or not "$" in options[i + 1])):
+                to_insert.append([i + 1, sale_prices.pop(0)])
 
         i = 0
         for e in to_insert:
@@ -51,7 +53,7 @@ def analyze_beer(url):
     for i in range(0, len(options), 2):
         container_type = options[i]
         code = url.split("/")[-1]
-        price = float(options[i+1].split("$")[1])
+        price = float(options[i + 1].split("$")[1])
         quantity = int(container_type.split("  ")[0])
         single_vol = int(container_type.split(" ")[-1][0:-3])
         total_vol = quantity * single_vol
@@ -68,6 +70,8 @@ def analyze_beer(url):
 
         container_type = str(quantity) + " x " + str(single_vol) + " ml"
 
-        containers.append([name, code, "The Beer Store", container_type, round(price, 2), quantity, round(single_vol,2), round(total_vol,2), round(price_per_vol,4), round(alcohol_vol,2), round(price_per_alc,4)])
+        containers.append(
+                [name, code, "The Beer Store", container_type, round(price, 2), quantity, round(single_vol, 2),
+                 round(total_vol, 2), round(price_per_vol, 4), round(alcohol_vol, 2), round(price_per_alc, 4)])
 
     return containers
