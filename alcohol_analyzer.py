@@ -18,9 +18,6 @@ class Analyzer:
     BEER_STORE_SEARCH_SUFFIX = "/beers/search/beer_type--"
     BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
 
-    def __init__(self):
-        pass
-
     def run(self, get_lcbo=True, get_beer_store=True):
         items = []
         if get_lcbo:
@@ -54,16 +51,13 @@ class Analyzer:
     def _get_beer_store_items(self):
         beers = []
         for beer in self.BEER_STORE_CATEGORIES:
-            print("Gathering all " + beer + "s")
             page = requests.get(self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer)
             page = html.fromstring(page.text)
 
             l = page.xpath('//a[@class="brand-link teaser"]/@href')
             beers += l
-        print("\nAnalyzing " + str(len(beers)) + " Beers\n")
         items = []
         for beer in beers:
-            print(beer.split("/")[-1])
             page = requests.get(self.BEER_STORE_URL + beer)
             items += Drink.from_beer_store_page(page, self.BEER_STORE_URL + beer)
 
@@ -71,17 +65,25 @@ class Analyzer:
 
     @staticmethod
     def to_html(items):
-        dump_str = ""
+        dumps = ""
         date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        dump_str += "<head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>\n<body>\n<b>" + date + "</b>\n<table class='sortable'>\n"
-        dump_str += "<tr style='font-weight:bold'><td>Name</td><td>Source</td><td>ABV</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Alc Vol</td><td>Price Per Vol</td><td>Price Per Alc</td></tr>"
+        dumps += "<html><head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>"
+        dumps += "<body><b>" + date + "</b><table class='sortable'>"
+        
+        dumps += "<tr style='font-weight:bold'>"
+        for header in ["Name", "Source", "ABV", "Price", "Quantity", "Single Vol", "Total Vol", "Alc Vol",
+                       "Price Per Vol", "Price Per Alc"]:
+            dumps += "<td>{}</td>".format(header)
+        dumps += "</tr>"
+
         for item in items:
-            dump_str += "<tr>"
+            dumps += "<tr>"
             for elem in [item.name, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
                          item.alcohol_vol, item.price_per_vol, item.price_per_alc]:
-                dump_str += "<td>{}</td>".format(elem)
-            dump_str += "</tr>\n"
-        dump_str += "</table>\n</body></html>"
+                dumps += "<td>{}</td>".format(elem)
+            dumps += "</tr>"
+
+        dumps += "</table></body></html>"
 
 
 class Drink:
