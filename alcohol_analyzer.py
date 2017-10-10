@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import requests
@@ -67,6 +68,20 @@ class Analyzer:
             items += Drink.from_beer_store_page(page, self.BEER_STORE_URL + beer)
 
         return items
+
+    @staticmethod
+    def to_html(items):
+        dump_str = ""
+        date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        dump_str += "<head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>\n<body>\n<b>" + date + "</b>\n<table class='sortable'>\n"
+        dump_str += "<tr style='font-weight:bold'><td>Name</td><td>Source</td><td>ABV</td><td>Price</td><td>Quantity</td><td>Single Vol</td><td>Total Vol</td><td>Alc Vol</td><td>Price Per Vol</td><td>Price Per Alc</td></tr>"
+        for item in items:
+            dump_str += "<tr>"
+            for elem in [item.name, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
+                         item.alcohol_vol, item.price_per_vol, item.price_per_alc]:
+                dump_str += "<td>{}</td>".format(elem)
+            dump_str += "</tr>\n"
+        dump_str += "</table>\n</body></html>"
 
 
 class Drink:
@@ -147,4 +162,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    json.dump(analyzer.get_lcbo_items(), open('links.json'))
+    json.dump(analyzer.to_html(analyzer.run(get_beer_store=False)), open('drinks.json', 'w+'))
