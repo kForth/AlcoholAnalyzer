@@ -1,27 +1,21 @@
+import json
+
 import requests
 import xmltodict
-import json
 from lxml import html
 
 
 class Drink:
-    def __init__(self, name, container, abv, price, source):
+    def __init__(self, name, abv, price, source, quantity, single_vol):
         self.name = name
-        self.container = container
         self.abv = abv
         self.price = price
         self.source = source
+        self.quantity = quantity
+        self.single_vol = single_vol
         self._update()
 
     def _update(self):
-        if " x" in self.container:
-            self.quantity = int(self.container.split(" x")[0])
-        else:
-            self.quantity = 1
-        if " x" in self.container:
-            self.single_vol = int(self.container.split("x ")[1].split(" mL")[0])
-        else:
-            self.single_vol = int(self.container.split(" ")[0])
         self.total_vol = self.quantity * self.single_vol
         self.price_per_vol = self.price / self.total_vol
         self.alcohol_vol = self.total_vol * (self.abv / 100)
@@ -29,16 +23,15 @@ class Drink:
 
     def to_json(self):
         return {
-            "name": self.name,
-            "container": self.container,
-            "abv": self.abv,
-            "price": self.price,
-            "source": self.source,
-            "quantity": self.quantity,
-            "single_vol": self.single_vol,
-            "total_vol": self.total_vol,
+            "name":          self.name,
+            "abv":           self.abv,
+            "price":         self.price,
+            "source":        self.source,
+            "quantity":      self.quantity,
+            "single_vol":    self.single_vol,
+            "total_vol":     self.total_vol,
             "price_per_vol": self.price_per_vol,
-            "alcohol_vol": self.alcohol_vol,
+            "alcohol_vol":   self.alcohol_vol,
             "price_per_alc": self.price_per_alc
         }
 
@@ -50,7 +43,17 @@ class Drink:
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
         abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
         price = float(page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$'))
-        return Drink(name, container, abv, price, "LCBO")
+
+        if " x" in container:
+            quantity = int(container.split(" x")[0])
+        else:
+            quantity = 1
+        if " x" in container:
+            single_vol = int(container.split("x ")[1].split(" mL")[0])
+        else:
+            single_vol = int(container.split(" ")[0])
+
+        return Drink(name, abv, price, "LCBO", quantity, single_vol)
 
 
 class Analyzer:
