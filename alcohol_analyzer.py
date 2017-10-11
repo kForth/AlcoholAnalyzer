@@ -194,7 +194,7 @@ class Drink:
         container = ''.join(page.xpath('//dt[@class="product-volume"]/text()'))
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
         abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
-        price = float(page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$'))
+        price = float(page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$').replace(",", ""))
         category = page.xpath('//div[@class="breadcrumbs"]/nav/ul/li/a/text()')
         category = category[min(2, len(category))]
 
@@ -240,7 +240,7 @@ class Drink:
         containers = []
         for i in range(0, len(options), 2):
             container_type = options[i]
-            price = float(options[i + 1].split("$")[1])
+            price = float(options[i + 1].split("$")[1].replace(",", ""))
             quantity = int(container_type.split("  ")[0])
             single_vol = int(container_type.split(" ")[-1][0:-3])
 
