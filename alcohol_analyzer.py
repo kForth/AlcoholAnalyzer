@@ -19,13 +19,25 @@ class Analyzer:
     BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
 
     def run(self, get_lcbo=True, get_beer_store=True):
-        items = []
-        if get_lcbo:
-            items += self._get_lcbo_items()
+        try:
+            self.items = json.load(open("drinks.json"))
+            self.items = list(map(lambda x: Drink(**x), self.items))
+            if not self.items:
+                raise Exception()
+        except:
+            self.items = []
+        errors = []
         if get_beer_store:
-            items += self._get_beer_store_items()
-
-        return items
+            i, e = self._load_beer_store_items()
+            self.items += i
+            errors += e
+        if get_lcbo:
+            i, e = self._load_lcbo_items()
+            self.items += i
+            errors += e
+        json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
+        json.dump(errors, open('errors.json', "w"))
+        return self.items
 
     def _get_lcbo_urls(self, from_file=False, save_links=True):
         if from_file:
@@ -37,71 +49,110 @@ class Analyzer:
                 results = xmltodict.parse(xml.text)
                 products += map(dict, results['urlset']['url'])
             if save_links:
-                json.dump(products, open("links.json", "w+"))
+                json.dump(products, open("lcbo_links.json", "w+"))
             return products
 
-    def _get_lcbo_items(self):
-        items = []
-        products = self._get_lcbo_urls(from_file=True)
-        for product in products[:3]:
+    def _load_lcbo_items(self):
+        errors = []
+        products = self._get_lcbo_urls()
+        existing = [e.url for e in list(self.items)]
+        for product in products:
+            if product['loc'] in existing:
+                continue
+            print(product['loc'])
             page = requests.get(product['loc'], headers=self.REQUEST_HEADERS)
-            items.append(Drink.from_lcbo_page(page.text, product['loc']))
-        return items
+            try:
+                self.items.append(Drink.from_lcbo_page(page.text, product['loc']))
+            except Exception as ex:
+                errors.append([product, ex])
+                print(ex)
+            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
+        return errors
 
-    def _get_beer_store_items(self):
+    def _load_beer_store_items(self):
         beers = []
+        errors = []
         for beer in self.BEER_STORE_CATEGORIES:
-            page = requests.get(self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer)
+            url = self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer
+            page = requests.get(url)
             page = html.fromstring(page.text)
 
             l = page.xpath('//a[@class="brand-link teaser"]/@href')
             beers += l
-        items = []
+        existing = [e.url for e in list(self.items)]
         for beer in beers:
-            page = requests.get(self.BEER_STORE_URL + beer)
-            items += Drink.from_beer_store_page(page, self.BEER_STORE_URL + beer)
-
-        return items
+            url = self.BEER_STORE_URL + beer
+            if url in existing:
+                continue
+            print(url)
+            page = requests.get(url)
+            try:
+                self.items += Drink.from_beer_store_page(page.text, url)
+            except Exception as ex:
+                errors.append([beer, ex])
+                print(ex)
+            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
+        return errors
 
     @staticmethod
     def to_html(items):
-        dumps = ""
+        dump_str = ""
         date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        dumps += "<html><head><script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script></head>"
-        dumps += "<body><b>" + date + "</b><table class='sortable'>"
-        
-        dumps += "<tr style='font-weight:bold'>"
-        for header in ["Name", "Source", "ABV", "Price", "Quantity", "Single Vol", "Total Vol", "Alc Vol",
-                       "Price Per Vol", "Price Per Alc"]:
-            dumps += "<td>{}</td>".format(header)
-        dumps += "</tr>"
+        dump_str += "<html>" \
+                    "<head>" \
+                    "<script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
+                    "</head>" \
+                    "<body>" \
+                    "<b>" + date + "</b><table class='sortable'>"
+
+        dump_str += "<tr style='font-weight:bold'>"
+        for header in ["Name", "Source", "ABV", "Price", "Quantity", "Single mL", "Total mL",
+                       "mL/$", "Alc mL", "mL(alc)/$"]:
+            dump_str += "<td>" + header + "</td>"
+        dump_str += "</tr>"
 
         for item in items:
-            dumps += "<tr>"
+            dump_str += "<tr>"
             for elem in [item.name, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
-                         item.alcohol_vol, item.price_per_vol, item.price_per_alc]:
-                dumps += "<td>{}</td>".format(elem)
-            dumps += "</tr>"
+                         item.ml_per_dollar, item.alcohol_vol, item.alc_per_dollar]:
+                if isinstance(elem, float):
+                    elem = round(elem, 2)
+                if elem is item.name:
+                    elem = '<a href="' + item.url + '">' + elem + "</a>"
+                dump_str += "<td>" + str(elem) + "</td>"
+            dump_str += "</tr>"
 
-        dumps += "</table></body></html>"
+        dump_str += "</table></body></html>"
+        return dump_str
 
 
 class Drink:
     def __init__(self, name, abv, price, source, quantity, single_vol, url):
-        self.name = name
-        self.abv = abv
-        self.price = price
-        self.source = source
-        self.quantity = quantity
-        self.single_vol = single_vol
-        self.url = url
+        self.name = str(name).encode('ascii', 'ignore').decode("utf-8")
+        self.abv = float(abv)
+        self.price = float(price)
+        self.source = str(source).encode('ascii', 'ignore').decode("utf-8")
+        self.quantity = int(quantity)
+        self.single_vol = float(single_vol)
+        self.url = str(url).encode('ascii', 'ignore').decode("utf-8")
         self._update()
 
     def _update(self):
         self.total_vol = self.quantity * self.single_vol
-        self.price_per_vol = self.price / self.total_vol
+        self.ml_per_dollar = self.total_vol / self.price
         self.alcohol_vol = self.total_vol * (self.abv / 100)
-        self.price_per_alc = self.price / self.alcohol_vol
+        self.alc_per_dollar = self.alcohol_vol / self.price
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "abv": self.abv,
+            "price": self.price,
+            "source": self.source,
+            "quantity": self.quantity,
+            "single_vol": self.single_vol,
+            "url": self.url
+        }
 
     @staticmethod
     def from_lcbo_page(text, url):
@@ -164,4 +215,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    json.dump(analyzer.to_html(analyzer.run(get_beer_store=False)), open('drinks.json', 'w+'))
+    json.dump(analyzer.to_html(analyzer.run()), open('drinks.html', 'w+'))
