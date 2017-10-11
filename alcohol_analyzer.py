@@ -24,6 +24,7 @@ class Analyzer:
             self.items = json.load(open("drinks.json")) if use_existing_drinks else []
         except FileNotFoundError:
             self.items = []
+
         self.items = list(map(lambda x: Drink(**x), self.items))
         if not self.items:
             self.items = []
@@ -33,6 +34,7 @@ class Analyzer:
         if get_lcbo:
             errors.append(list(self._load_lcbo_items()))
         self._dump_items()
+        self._dump_html()
         json.dump(errors, open('errors.json', "w+"))
         return self.items
 
@@ -93,7 +95,7 @@ class Analyzer:
         beers = []
         for beer in self.BEER_STORE_CATEGORIES:
             url = self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer
-            page = requests.get(url)
+            page = self._get_page(url)
             page = html.fromstring(page.text)
 
             l = page.xpath('//a[@class="brand-link teaser"]/@href')
@@ -128,7 +130,8 @@ class Analyzer:
     @staticmethod
     def to_html(items):
         dump_str = ""
-        date = "List created: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        date = "This list was created created on " + str(datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")) + \
+               " and has " + str(len(items)) + " items."
         dump_str += "<html>" \
                     "<head>" \
                     "<script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
@@ -257,4 +260,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    open('drinks.html', 'w+').write(analyzer.to_html(analyzer.get_items()))
+    analyzer.get_items()
