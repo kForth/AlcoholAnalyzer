@@ -21,12 +21,10 @@ class Analyzer:
 
     def get_items(self, get_lcbo=True, get_beer_store=True, use_existing_drinks=True):
         try:
-            self.items = json.load(open("drinks.json")) if use_existing_drinks else []
+            self.items = json.load(open('drinks.json')) if use_existing_drinks else []
+            self.items = list(map(lambda x: Drink(**x), self.items))
+            self._dump_items(filename='drinks_1.json', dump_errors=False)
         except FileNotFoundError:
-            self.items = []
-
-        self.items = list(map(lambda x: Drink(**x), self.items))
-        if not self.items:
             self.items = []
         self.errors = []
         if get_beer_store:
@@ -37,20 +35,21 @@ class Analyzer:
         self._dump_html()
         return self.items
 
-    def _dump_items(self):
+    def _dump_items(self, filename='drinks.json', dump_errors=True, error_filename='errors.json'):
         if '_dump_items_counter' not in self.__dict__:
             self.__dump_items_counter = -1
         self.__dump_items_counter += 1
         if self.__dump_items_counter % 20 == 0:
-            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w+"))
-            json.dump(self.errors, open('errors.json', "w+"))
+            json.dump([e.to_json() for e in list(self.items)], open(filename, "w+"))
+            if dump_errors:
+                json.dump(self.errors, open(error_filename, "w+"))
 
-    def _dump_html(self):
+    def _dump_html(self, filename='drinks.html'):
         if '__dump_html_counter' not in self.__dict__:
             self.__dump_html_counter = -1
         self.__dump_html_counter += 1
         if self.__dump_html_counter % 100 == 0:
-            open('drinks.html', 'w+').write(analyzer.to_html(self.items))
+            open(filename, 'w+').write(analyzer.to_html(self.items))
 
     def _get_page(self, url):
         try:
@@ -131,7 +130,6 @@ class Analyzer:
                 self._dump_html()
             except Exception as ex:
                 print(ex)
-                raise ex
                 yield [beer, ex]
 
     @staticmethod
