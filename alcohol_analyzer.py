@@ -21,7 +21,7 @@ class Analyzer:
 
     def get_items(self, get_lcbo=True, get_beer_store=True, use_existing_drinks=True):
         try:
-            self.items = [] if use_existing_drinks else json.load(open("drinks.json"))
+            self.items = json.load(open("drinks.json")) if use_existing_drinks else []
         except FileNotFoundError:
             self.items = []
         self.items = list(map(lambda x: Drink(**x), self.items))
