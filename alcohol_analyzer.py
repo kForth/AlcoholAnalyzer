@@ -28,21 +28,29 @@ class Analyzer:
         self.items = list(map(lambda x: Drink(**x), self.items))
         if not self.items:
             self.items = []
-        errors = []
+        self.errors = []
         if get_beer_store:
-            errors.append(list(self._load_beer_store_items()))
+            self.errors += list(self._load_beer_store_items())
         if get_lcbo:
-            errors.append(list(self._load_lcbo_items()))
+            self.errors += list(self._load_lcbo_items())
         self._dump_items()
         self._dump_html()
-        json.dump(errors, open('errors.json', "w+"))
         return self.items
 
     def _dump_items(self):
-        json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w+"))
+        if '_dump_items_counter' not in self.__dict__:
+            self.__dump_items_counter = -1
+        self.__dump_items_counter += 1
+        if self.__dump_items_counter % 20 == 0:
+            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w+"))
+            json.dump(self.errors, open('errors.json', "w+"))
 
     def _dump_html(self):
-        open('drinks.html', 'w+').write(analyzer.to_html(self.items))
+        if '__dump_html_counter' not in self.__dict__:
+            self.__dump_html_counter = -1
+        self.__dump_html_counter += 1
+        if self.__dump_html_counter % 100 == 0:
+            open('drinks.html', 'w+').write(analyzer.to_html(self.items))
 
     def _get_page(self, url):
         try:
@@ -58,7 +66,7 @@ class Analyzer:
             for xml_url in self.LCBO_XML_URLS:
                 xml = requests.get(self.LCBO_URL + xml_url, headers=self.REQUEST_HEADERS)
                 results = xmltodict.parse(xml.text)
-                products += map(dict, results['urlset']['url'])
+                products += list(map(dict, results['urlset']['url']))
             if save_links:
                 json.dump(products, open("lcbo_links.json", "w+"))
             return products
@@ -82,11 +90,11 @@ class Analyzer:
                 continue
 
             try:
-                self.items.append(Drink.from_lcbo_page(page.text, product['loc']))
-                if i % 20 == 0:
-                    self._dump_items()
-                if i % 100 == 0:
-                    self._dump_html()
+                drink = Drink.from_lcbo_page(page.text, product['loc'])
+                if drink:
+                    self.items.append(drink)
+                self._dump_items()
+                self._dump_html()
             except Exception as ex:
                 print(ex)
                 yield [product, ex]
@@ -97,9 +105,7 @@ class Analyzer:
             url = self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer
             page = self._get_page(url)
             page = html.fromstring(page.text)
-
-            l = page.xpath('//a[@class="brand-link teaser"]/@href')
-            beers += l
+            beers += page.xpath('//a[@class="brand-link teaser"]/@href')
         existing = [e.url for e in list(self.items)]
         i = 0
         for beer in beers:
@@ -118,13 +124,14 @@ class Analyzer:
                 continue
 
             try:
-                self.items += Drink.from_beer_store_page(page.text, url)
-                if i % 20 == 0:
-                    self._dump_items()
-                if i % 100 == 0:
-                    self._dump_html()
+                drink = Drink.from_beer_store_page(page.text, url)
+                if drink:
+                    self.items += drink
+                self._dump_items()
+                self._dump_html()
             except Exception as ex:
                 print(ex)
+                raise ex
                 yield [beer, ex]
 
     @staticmethod
@@ -147,7 +154,8 @@ class Analyzer:
 
         for item in items:
             dump_str += "<tr>"
-            for elem in [item.name, item.category, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
+            for elem in [item.name, item.category, item.source, item.abv, item.price, item.quantity, item.single_vol,
+                         item.total_vol,
                          item.ml_per_dollar, item.alcohol_vol, item.alc_per_dollar]:
                 if isinstance(elem, float):
                     elem = round(elem, 2)
@@ -180,14 +188,14 @@ class Drink:
 
     def to_json(self):
         return {
-            "name": self.name,
-            "category": self.category,
-            "abv": self.abv,
-            "price": self.price,
-            "source": self.source,
-            "quantity": self.quantity,
+            "name":       self.name,
+            "category":   self.category,
+            "abv":        self.abv,
+            "price":      self.price,
+            "source":     self.source,
+            "quantity":   self.quantity,
             "single_vol": self.single_vol,
-            "url": self.url
+            "url":        self.url
         }
 
     @staticmethod
@@ -196,10 +204,17 @@ class Drink:
         name = page.xpath('//li[@id="categoryPath"]/text()')[0].strip().encode('ascii', 'ignore')
         container = ''.join(page.xpath('//dt[@class="product-volume"]/text()'))
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
-        abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
-        price = float(page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$').replace(",", ""))
+        price = float(
+            page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$').replace(
+                ",", ""))
         category = page.xpath('//div[@class="breadcrumbs"]/nav/ul/li/a/text()')
-        category = category[min(2, len(category))]
+        category = category[min(2, len(category) - 1)]
+
+        try:
+            abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
+        except IndexError as ex:
+            print("No ABV Value")
+            return None
 
         if " x" in container:
             quantity = int(container.split(" x")[0])
@@ -221,10 +236,10 @@ class Drink:
 
         options = page.xpath('//tbody/tr/td/text()')
         sale_prices = page.xpath('//tbody/tr/td/strike/text()')
-        cat = page.xpath('//p[@class="introduction"]/span')
-        for type in ["Ale", "Lager", "Malt", "Stout"]:
-            if any([type in e for e in cat]):
-                cat = type
+        cat = page.xpath('//p[@class="introduction"]/span/text()')
+        for beer_type in ["Ale", "Lager", "Malt", "Stout"]:
+            if any([beer_type in e for e in cat]):
+                cat = beer_type
                 break
         else:
             cat = cat[0]
@@ -232,7 +247,7 @@ class Drink:
         if len(sale_prices) > 0:
             to_insert = []
             for i in range(len(options)):
-                if len(options) == 1 or ("ml" in options[i] and (i == len(options) - 1 or not "$" in options[i + 1])):
+                if len(options) == 1 or ("ml" in options[i] and (i == len(options) - 1 or "$" not in options[i + 1])):
                     to_insert.append([i + 1, sale_prices.pop(0)])
 
             i = 0
@@ -240,22 +255,19 @@ class Drink:
                 options.insert(e[0] + i, e[1])
                 i += 1
 
-        containers = []
         for i in range(0, len(options), 2):
             container_type = options[i]
             price = float(options[i + 1].split("$")[1].replace(",", ""))
             quantity = int(container_type.split("  ")[0])
             single_vol = int(container_type.split(" ")[-1][0:-3])
 
-            if single_vol in [50000, 58600]:
-                price -= 50
-            if single_vol in [30000]:
+            # Deposit on keg return
+            if single_vol in [30000, 50000, 58600]:
                 price -= 50
             if single_vol in [20000, 25000]:
                 price -= 20
 
-            containers.append(Drink(name, cat, abv, price, "The Beer Store", quantity, single_vol, url))
-        return containers
+            yield Drink(name, cat, abv, price, "The Beer Store", quantity, single_vol, url)
 
 
 if __name__ == "__main__":
