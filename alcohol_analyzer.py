@@ -137,14 +137,14 @@ class Analyzer:
                     "<b>" + date + "</b><table class='sortable'>"
 
         dump_str += "<tr style='font-weight:bold'>"
-        for header in ["Name", "Source", "ABV", "Price", "Quantity", "Single mL", "Total mL",
+        for header in ["Name", "Category", "Source", "ABV", "Price", "Quantity", "Single mL", "Total mL",
                        "mL/$", "Alc mL", "mL(alc)/$"]:
             dump_str += "<td>" + header + "</td>"
         dump_str += "</tr>"
 
         for item in items:
             dump_str += "<tr>"
-            for elem in [item.name, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
+            for elem in [item.name, item.category, item.source, item.abv, item.price, item.quantity, item.single_vol, item.total_vol,
                          item.ml_per_dollar, item.alcohol_vol, item.alc_per_dollar]:
                 if isinstance(elem, float):
                     elem = round(elem, 2)
@@ -158,8 +158,9 @@ class Analyzer:
 
 
 class Drink:
-    def __init__(self, name, abv, price, source, quantity, single_vol, url):
+    def __init__(self, name, category, abv, price, source, quantity, single_vol, url):
         self.name = str(name).encode('ascii', 'ignore').decode("utf-8")
+        self.category = str(category).encode('ascii', 'ignore').decode("utf-8")
         self.abv = float(abv)
         self.price = float(price)
         self.source = str(source).encode('ascii', 'ignore').decode("utf-8")
@@ -177,6 +178,7 @@ class Drink:
     def to_json(self):
         return {
             "name": self.name,
+            "category": self.category,
             "abv": self.abv,
             "price": self.price,
             "source": self.source,
@@ -193,6 +195,8 @@ class Drink:
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
         abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
         price = float(page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$'))
+        category = page.xpath('//div[@class="breadcrumbs"]/nav/ul/li/a/text()')
+        category = category[min(2, len(category))]
 
         if " x" in container:
             quantity = int(container.split(" x")[0])
@@ -203,7 +207,7 @@ class Drink:
         else:
             single_vol = int(container.split(" ")[0])
 
-        return Drink(name, abv, price, "LCBO", quantity, single_vol, url)
+        return Drink(name, category, abv, price, "LCBO", quantity, single_vol, url)
 
     @staticmethod
     def from_beer_store_page(text, url):
@@ -214,6 +218,13 @@ class Drink:
 
         options = page.xpath('//tbody/tr/td/text()')
         sale_prices = page.xpath('//tbody/tr/td/strike/text()')
+        cat = page.xpath('//p[@class="introduction"]/span')
+        for type in ["Ale", "Lager", "Malt", "Stout"]:
+            if any([type in e for e in cat]):
+                cat = type
+                break
+        else:
+            cat = cat[0]
 
         if len(sale_prices) > 0:
             to_insert = []
@@ -240,7 +251,7 @@ class Drink:
             if single_vol in [20000, 25000]:
                 price -= 20
 
-            containers.append(Drink(name, abv, price, "The Beer Store", quantity, single_vol, url))
+            containers.append(Drink(name, cat, abv, price, "The Beer Store", quantity, single_vol, url))
         return containers
 
 
