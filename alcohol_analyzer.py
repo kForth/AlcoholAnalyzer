@@ -19,8 +19,11 @@ class Analyzer:
     BEER_STORE_SEARCH_SUFFIX = "/beers/search/beer_type--"
     BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
 
-    def get_items(self, get_lcbo=True, get_beer_store=True):
-        self.items = json.load(open("drinks.json"))
+    def get_items(self, get_lcbo=True, get_beer_store=True, use_existing_drinks=True):
+        try:
+            self.items = [] if use_existing_drinks else json.load(open("drinks.json"))
+        except FileNotFoundError:
+            self.items = []
         self.items = list(map(lambda x: Drink(**x), self.items))
         if not self.items:
             self.items = []
