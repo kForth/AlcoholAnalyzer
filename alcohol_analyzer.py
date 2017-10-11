@@ -83,7 +83,7 @@ class Analyzer:
                 page = self._get_page(product['loc'])
                 if page:
                     break
-                time.sleep(4)
+                time.sleep(1)
             else:
                 yield [product['loc'], "Connection Error"]
                 continue
@@ -92,6 +92,7 @@ class Analyzer:
                 drink = Drink.from_lcbo_page(page.text, product['loc'])
                 if drink:
                     self.items.append(drink)
+                print(len(products) - products.index(product))
                 self._dump_items()
                 self._dump_html()
             except Exception as ex:
@@ -167,14 +168,14 @@ class Analyzer:
 
 
 class Drink:
-    def __init__(self, name, category, abv, price, source, quantity, single_vol, url):
+    def __init__(self, name, category, abv, price, source, quantity, single_vol, url, **kwargs):
         self.name = str(name).encode('ascii', 'ignore').decode("utf-8")
         self.category = str(category).encode('ascii', 'ignore').decode("utf-8")
         self.abv = float(abv)
-        self.price = float(price)
+        self.price = round(float(price), 2)
         self.source = str(source).encode('ascii', 'ignore').decode("utf-8")
         self.quantity = int(quantity)
-        self.single_vol = float(single_vol)
+        self.single_vol = int(single_vol)
         self.url = str(url).encode('ascii', 'ignore').decode("utf-8")
         self._update()
 
@@ -186,14 +187,18 @@ class Drink:
 
     def to_json(self):
         return {
-            "name":       self.name,
-            "category":   self.category,
-            "abv":        self.abv,
-            "price":      self.price,
-            "source":     self.source,
-            "quantity":   self.quantity,
-            "single_vol": self.single_vol,
-            "url":        self.url
+            "name":           self.name,
+            "category":       self.category,
+            "abv":            self.abv,
+            "price":          self.price,
+            "source":         self.source,
+            "quantity":       self.quantity,
+            "single_vol":     self.single_vol,
+            "url":            self.url,
+            "total_vol":      int(self.total_vol),
+            "ml_per_dollar":  round(self.ml_per_dollar, 2),
+            "alcohol_vol":    int(self.alcohol_vol),
+            "alc_per_dollar": round(self.alc_per_dollar, 2)
         }
 
     @staticmethod
@@ -203,14 +208,15 @@ class Drink:
         container = ''.join(page.xpath('//dt[@class="product-volume"]/text()'))
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
         price = float(
-            page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip('$').replace(
-                ",", ""))
+                page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip(
+                    '$').replace(
+                        ",", ""))
         category = page.xpath('//div[@class="breadcrumbs"]/nav/ul/li/a/text()')
         category = category[min(2, len(category) - 1)]
 
         try:
             abv = float(details[["%" in i for i in details].index(True)].split("%")[0])
-        except IndexError as ex:
+        except Exception:
             print("No ABV Value")
             return None
 
