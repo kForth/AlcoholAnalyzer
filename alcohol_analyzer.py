@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 
 import requests
 import xmltodict
@@ -18,7 +19,7 @@ class Analyzer:
     BEER_STORE_SEARCH_SUFFIX = "/beers/search/beer_type--"
     BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
 
-    def run(self, get_lcbo=True, get_beer_store=True):
+    def get_items(self, get_lcbo=True, get_beer_store=True):
         self.items = json.load(open("drinks.json"))
         self.items = list(map(lambda x: Drink(**x), self.items))
         if not self.items:
@@ -35,9 +36,18 @@ class Analyzer:
     def _dump_items(self):
         json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w+"))
 
+    def _dump_html(self):
+        open('drinks.html', 'w+').write(analyzer.to_html(self.items))
+
+    def _get_page(self, url):
+        try:
+            return requests.get(url, headers=self.REQUEST_HEADERS)
+        except:
+            return None
+
     def _get_lcbo_urls(self, from_file=False, save_links=True):
         if from_file:
-            return json.load(open("links.json"))
+            return json.load(open("lcbo_links.json"))
         else:
             products = []
             for xml_url in self.LCBO_XML_URLS:
@@ -57,14 +67,24 @@ class Analyzer:
             if product['loc'] in existing:
                 continue
             print(product['loc'])
-            page = requests.get(product['loc'], headers=self.REQUEST_HEADERS)
+            for j in range(5):
+                page = self._get_page(product['loc'])
+                if page:
+                    break
+                time.sleep(4)
+            else:
+                yield [product['loc'], "Connection Error"]
+                continue
+
             try:
                 self.items.append(Drink.from_lcbo_page(page.text, product['loc']))
                 if i % 20 == 0:
                     self._dump_items()
+                if i % 100 == 0:
+                    self._dump_html()
             except Exception as ex:
-                yield [product, ex]
                 print(ex)
+                yield [product, ex]
 
     def _load_beer_store_items(self):
         beers = []
@@ -83,12 +103,23 @@ class Analyzer:
             if url in existing:
                 continue
             print(url)
-            page = requests.get(url)
+            for j in range(5):
+                page = self._get_page(url)
+                if page:
+                    break
+                time.sleep(4)
+            else:
+                yield [url, "Connection Error"]
+                continue
+
             try:
                 self.items += Drink.from_beer_store_page(page.text, url)
-                if i % 10 == 0:
+                if i % 20 == 0:
                     self._dump_items()
+                if i % 100 == 0:
+                    self._dump_html()
             except Exception as ex:
+                print(ex)
                 yield [beer, ex]
 
     @staticmethod
@@ -212,4 +243,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    open('drinks.html', 'w+').write(analyzer.to_html(analyzer.run()))
+    open('drinks.html', 'w+').write(analyzer.to_html(analyzer.get_items()))
