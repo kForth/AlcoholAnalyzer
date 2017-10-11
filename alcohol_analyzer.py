@@ -19,25 +19,21 @@ class Analyzer:
     BEER_STORE_CATEGORIES = ["Ale", "Lager", "Malt", "Stout"]
 
     def run(self, get_lcbo=True, get_beer_store=True):
-        try:
-            self.items = json.load(open("drinks.json"))
-            self.items = list(map(lambda x: Drink(**x), self.items))
-            if not self.items:
-                raise Exception()
-        except:
+        self.items = json.load(open("drinks.json"))
+        self.items = list(map(lambda x: Drink(**x), self.items))
+        if not self.items:
             self.items = []
         errors = []
         if get_beer_store:
-            i, e = self._load_beer_store_items()
-            self.items += i
-            errors += e
+            errors.append(list(self._load_beer_store_items()))
         if get_lcbo:
-            i, e = self._load_lcbo_items()
-            self.items += i
-            errors += e
-        json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
-        json.dump(errors, open('errors.json', "w"))
+            errors.append(list(self._load_lcbo_items()))
+        self._dump_items()
+        json.dump(errors, open('errors.json', "w+"))
         return self.items
+
+    def _dump_items(self):
+        json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w+"))
 
     def _get_lcbo_urls(self, from_file=False, save_links=True):
         if from_file:
@@ -53,25 +49,25 @@ class Analyzer:
             return products
 
     def _load_lcbo_items(self):
-        errors = []
-        products = self._get_lcbo_urls()
+        products = self._get_lcbo_urls(from_file=True)
         existing = [e.url for e in list(self.items)]
+        i = 0
         for product in products:
+            i += 1
             if product['loc'] in existing:
                 continue
             print(product['loc'])
             page = requests.get(product['loc'], headers=self.REQUEST_HEADERS)
             try:
                 self.items.append(Drink.from_lcbo_page(page.text, product['loc']))
+                if i % 20 == 0:
+                    self._dump_items()
             except Exception as ex:
-                errors.append([product, ex])
+                yield [product, ex]
                 print(ex)
-            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
-        return errors
 
     def _load_beer_store_items(self):
         beers = []
-        errors = []
         for beer in self.BEER_STORE_CATEGORIES:
             url = self.BEER_STORE_URL + self.BEER_STORE_SEARCH_SUFFIX + beer
             page = requests.get(url)
@@ -80,7 +76,9 @@ class Analyzer:
             l = page.xpath('//a[@class="brand-link teaser"]/@href')
             beers += l
         existing = [e.url for e in list(self.items)]
+        i = 0
         for beer in beers:
+            i += 1
             url = self.BEER_STORE_URL + beer
             if url in existing:
                 continue
@@ -88,11 +86,10 @@ class Analyzer:
             page = requests.get(url)
             try:
                 self.items += Drink.from_beer_store_page(page.text, url)
+                if i % 10 == 0:
+                    self._dump_items()
             except Exception as ex:
-                errors.append([beer, ex])
-                print(ex)
-            json.dump([e.to_json() for e in list(self.items)], open('drinks.json', "w"))
-        return errors
+                yield [beer, ex]
 
     @staticmethod
     def to_html(items):
@@ -215,4 +212,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    json.dump(analyzer.to_html(analyzer.run()), open('drinks.html', 'w+'))
+    open('drinks.html', 'w+').write(analyzer.to_html(analyzer.run()))
