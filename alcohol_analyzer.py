@@ -50,7 +50,7 @@ class Analyzer:
             self.__dump_html_counter = -1
         self.__dump_html_counter += 1
         if self.__dump_html_counter % 100 == 0:
-            open(filename, 'w+').write(analyzer.to_html(self.items))
+            open(filename, 'w+').write(self.to_html(self.items))
             self.to_csv(self.items)
 
     def _get_page(self, url):
@@ -153,6 +153,11 @@ class Analyzer:
         dump_str += "<html>" \
                     "<head>" \
                     "<script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
+                    "<style>" \
+                    "table { border - collapse: collapse; width: 100 %; }" \
+                    "table, th, td { border:  1px solid  # ccc; padding: 2px; }" \
+                    "th { font - weight: bold; }" \
+                    "</style >" \
                     "</head>" \
                     "<body>" \
                     "<b>" + date + "</b><table class='sortable'>"
@@ -177,7 +182,6 @@ class Analyzer:
 
         dump_str += "</table></body></html>"
         return dump_str
-
 
 class Drink:
     def __init__(self, name, category, abv, price, source, quantity, single_vol, url, **kwargs):
@@ -221,7 +225,7 @@ class Drink:
         details = page.xpath('//div[@class="product-details-list"]/dl/dd/text()')
         price = float(
                 page.xpath('//div[@id="prodPrices"]/strong/span/span[@class="price-value"]/text()')[0].strip(
-                    '$').replace(
+                        '$').replace(
                         ",", ""))
         category = page.xpath('//div[@class="breadcrumbs"]/nav/ul/li/a/text()')
         category = category[min(2, len(category) - 1)]
@@ -263,7 +267,8 @@ class Drink:
         if len(sale_prices) > 0:
             to_insert = []
             for i in range(len(options)):
-                if len(options) == 1 or ("ml" in options[i] and (i == len(options) - 1 or "$" not in options[i + 1])):
+                if len(options) == 1 or (
+                        "ml" in options[i] and (i == len(options) - 1 or "$" not in options[i + 1])):
                     to_insert.append([i + 1, sale_prices.pop(0)])
 
             i = 0
@@ -284,7 +289,6 @@ class Drink:
                 price -= 20
 
             yield Drink(name, cat, abv, price, "The Beer Store", quantity, single_vol, url)
-
 
 if __name__ == "__main__":
     analyzer = Analyzer()
