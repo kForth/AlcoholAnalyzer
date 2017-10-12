@@ -149,10 +149,11 @@ class Analyzer:
         dump_str += "<html>" \
                     "<head>" \
                     "<script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
-                    "<style>" \
-                    "table { border - collapse: collapse; width: 100 %; }" \
-                    "table, th, td { border:  1px solid  # ccc; padding: 2px; }" \
-                    "th { font - weight: bold; }" \
+                    "<style>\n" \
+                    "body { font-family: Helvetics sans-serif }\n" \
+                    "table { border-collapse: collapse; width: 100%; }\n" \
+                    "table, th, td { border:  1px solid  #ccc; padding: 2px; }\n" \
+                    "th { font-weight: bold; }\n" \
                     "</style >" \
                     "</head>" \
                     "<body>" \
