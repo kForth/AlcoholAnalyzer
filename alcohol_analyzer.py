@@ -24,26 +24,23 @@ class Analyzer:
         try:
             self.items = json.load(open('drinks.json')) if use_existing_drinks else []
             self.items = list(map(lambda x: Drink(**x), self.items))
-            self._dump_items(filename='drinks_1.json', dump_errors=False)
+            self._dump_items(filename='drinks_1.json')
         except FileNotFoundError:
             self.items = []
-        self.errors = []
         if get_beer_store:
-            self.errors += list(self._load_beer_store_items())
+            self._load_beer_store_items()
         if get_lcbo:
-            self.errors += list(self._load_lcbo_items())
+            self._load_lcbo_items()
         self._dump_items()
         self._dump_html()
         return self.items
 
-    def _dump_items(self, filename='drinks.json', dump_errors=True, error_filename='errors.json'):
+    def _dump_items(self, filename='drinks.json'):
         if '_dump_items_counter' not in self.__dict__:
             self.__dump_items_counter = -1
         self.__dump_items_counter += 1
         if self.__dump_items_counter % 20 == 0:
             json.dump([e.to_json() for e in list(self.items)], open(filename, "w+"))
-            if dump_errors:
-                json.dump(self.errors, open(error_filename, "w+"))
 
     def _dump_html(self, filename='drinks.html'):
         if '__dump_html_counter' not in self.__dict__:
@@ -51,7 +48,6 @@ class Analyzer:
         self.__dump_html_counter += 1
         if self.__dump_html_counter % 100 == 0:
             open(filename, 'w+').write(self.to_html(self.items))
-            self.to_csv(self.items)
 
     def _get_page(self, url):
         try:
@@ -87,7 +83,7 @@ class Analyzer:
                     break
                 time.sleep(1)
             else:
-                yield [product['loc'], "Connection Error"]
+                print("Connection Error")
                 continue
 
             try:
@@ -99,7 +95,7 @@ class Analyzer:
                 self._dump_html()
             except Exception as ex:
                 print(ex)
-                yield [product, ex]
+                continue
 
     def _load_beer_store_items(self):
         beers = []
@@ -122,7 +118,7 @@ class Analyzer:
                     break
                 time.sleep(4)
             else:
-                yield [url, "Connection Error"]
+                print("Connection Error")
                 continue
 
             try:
@@ -133,7 +129,7 @@ class Analyzer:
                 self._dump_html()
             except Exception as ex:
                 print(ex)
-                yield [beer, ex]
+                continue
 
     @staticmethod
     def to_csv(items):
