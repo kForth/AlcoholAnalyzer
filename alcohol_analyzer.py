@@ -1,6 +1,7 @@
 import datetime
 import json
 import time
+from collections import OrderedDict
 
 import requests
 import xmltodict
@@ -50,6 +51,7 @@ class Analyzer:
         self.__dump_html_counter += 1
         if self.__dump_html_counter % 100 == 0:
             open(filename, 'w+').write(analyzer.to_html(self.items))
+            self.to_csv(self.items)
 
     def _get_page(self, url):
         try:
@@ -134,6 +136,16 @@ class Analyzer:
                 yield [beer, ex]
 
     @staticmethod
+    def to_csv(items):
+        headers = list(Drink("", "", 1, 1, "", 1, 1, "").to_json().keys())
+        file = open('drinks.csv', 'w+')
+        file.write(','.join(headers) + "\n")
+        for item in items:
+            data = item.to_json()
+            file.write(",".join(map(str, data.values())) + "\n")
+        file.close()
+
+    @staticmethod
     def to_html(items):
         dump_str = ""
         date = "This list was created created on " + str(datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")) + \
@@ -186,20 +198,20 @@ class Drink:
         self.alc_per_dollar = self.alcohol_vol / self.price
 
     def to_json(self):
-        return {
+        return OrderedDict({
             "name":           self.name,
+            "source":         self.source,
+            "url":            self.url,
             "category":       self.category,
             "abv":            self.abv,
             "price":          self.price,
-            "source":         self.source,
             "quantity":       self.quantity,
             "single_vol":     self.single_vol,
-            "url":            self.url,
             "total_vol":      int(self.total_vol),
             "ml_per_dollar":  round(self.ml_per_dollar, 2),
             "alcohol_vol":    int(self.alcohol_vol),
             "alc_per_dollar": round(self.alc_per_dollar, 2)
-        }
+        })
 
     @staticmethod
     def from_lcbo_page(text, url):
