@@ -1,9 +1,2 @@
-*.pyc
 .idea/
-links.json
-
-drinks.json
-
-*.html
-
 *.json
