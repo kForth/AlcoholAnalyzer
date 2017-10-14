@@ -51,8 +51,16 @@ class Analyzer:
 
     def _get_page(self, url):
         try:
-            return requests.get(url, headers=self.REQUEST_HEADERS)
-        except:
+            for j in range(5):
+                page = requests.get(url, headers=self.REQUEST_HEADERS)
+                if page:
+                    return page
+                time.sleep(1)
+            else:
+                print("No more Connection tries")
+                return None
+        except Exception as ex:
+            print(ex)
             return None
 
     def _get_lcbo_urls(self, from_file=False, save_links=True):
@@ -71,26 +79,18 @@ class Analyzer:
     def _load_lcbo_items(self):
         products = self._get_lcbo_urls(from_file=True)
         existing = [e.url for e in list(self.items)]
-        i = 0
         for product in products:
-            i += 1
             if product['loc'] in existing:
                 continue
             print(product['loc'])
-            for j in range(5):
-                page = self._get_page(product['loc'])
-                if page:
-                    break
-                time.sleep(1)
-            else:
-                print("Connection Error")
+            page = self._get_page(product['loc'])
+            if not page:
                 continue
 
             try:
                 drink = Drink.from_lcbo_page(page.text, product['loc'])
                 if drink:
                     self.items.append(drink)
-                print(len(products) - products.index(product))
                 self._dump_items()
                 self._dump_html()
             except Exception as ex:
@@ -105,23 +105,16 @@ class Analyzer:
             page = html.fromstring(page.text)
             beers += page.xpath('//a[@class="brand-link teaser"]/@href')
         existing = [e.url for e in list(self.items)]
-        i = 0
         for beer in beers:
-            i += 1
             url = self.BEER_STORE_URL + beer
             if url in existing:
                 continue
             print(url)
-            for j in range(5):
-                page = self._get_page(url)
-                if page:
-                    break
-                time.sleep(4)
-            else:
-                print("Connection Error")
+            page = self._get_page(url)
+            if not page:
                 continue
-
             try:
+
                 drink = Drink.from_beer_store_page(page.text, url)
                 if drink:
                     self.items += drink
