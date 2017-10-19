@@ -136,7 +136,7 @@ class Analyzer:
         file.write(','.join(headers) + "\n")
         for item in items:
             data = item.to_json()
-            file.write(",".join(map(str, data.values())) + "\n")
+            file.write(",".join(map(lambda x: str(x).replace(",", "."), data.values())) + "\n")
         file.close()
 
     @staticmethod
