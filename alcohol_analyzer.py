@@ -125,9 +125,14 @@ class Analyzer:
                 continue
 
     @staticmethod
-    def to_csv(items):
+    def load_json_items(filename='drinks.json'):
+        items = json.load(open(filename))
+        return list(map(lambda x: Drink(**x), items))
+
+    @staticmethod
+    def to_csv(items, filename='drinks.csv'):
         headers = list(Drink("", "", 1, 1, "", 1, 1, "").to_json().keys())
-        file = open('drinks.csv', 'w+')
+        file = open(filename, 'w+')
         file.write(','.join(headers) + "\n")
         for item in items:
             data = item.to_json()
@@ -282,4 +287,4 @@ class Drink:
 
 if __name__ == "__main__":
     analyzer = Analyzer()
-    analyzer.get_items()
+    analyzer.to_csv(analyzer.load_json_items())
