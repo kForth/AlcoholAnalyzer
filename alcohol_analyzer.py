@@ -42,7 +42,7 @@ class Analyzer:
         if self.__dump_items_counter % 20 == 0:
             json.dump([e.to_json() for e in list(self.items)], open(filename, "w+"))
 
-    def _dump_html(self, filename='drinks.html'):
+    def _dump_html(self, filename='index.html'):
         if '__dump_html_counter' not in self.__dict__:
             self.__dump_html_counter = -1
         self.__dump_html_counter += 1
