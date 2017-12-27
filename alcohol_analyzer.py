@@ -146,7 +146,7 @@ class Analyzer:
                " and has " + str(len(items)) + " items."
         dump_str += "<html>" \
                     "<head>" \
-                    "<script src='http://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
+                    "<script src='https://www.kryogenix.org/code/browser/sorttable/sorttable.js'></script>" \
                     "<style>\n" \
                     "body { font-family: Helvetics sans-serif }\n" \
                     "table { border-collapse: collapse; width: 100%; }\n" \
